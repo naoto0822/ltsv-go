@@ -13,4 +13,4 @@ test:
 lint:
 	golint -set_exit_status ./ltsv
 
-.PHONY: test
+.PHONY: dep vet test lint
