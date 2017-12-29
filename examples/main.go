@@ -1,7 +1,7 @@
 package main
 
 import (
-	// "fmt"
+	"fmt"
 	"github.com/naoto0822/ltsv-go/ltsv"
 )
 
@@ -12,7 +12,14 @@ type Repository struct {
 	URL         string                 `ltsv:"url"`
 	Private     bool                   `ltsv:"private"`
 	Topics      []string               `ltsv:"topics"`
-	Owner       map[string]interface{} `ltsv:"owner"`
+	License     map[string]interface{} `ltsv:"license"`
+	Owner       Owner                  `ltsv:owner`
+}
+
+type Owner struct {
+	ID        int
+	Login     string
+	AvatarURL string
 }
 
 func main() {
@@ -21,7 +28,10 @@ func main() {
 		Name:        "ltsv-go",
 		Description: "ltsv Marshal and Unmarshal",
 		URL:         "http://google.com",
+		Topics:      []string{"go", "ltsv", "reflect"},
 	}
 
-	ltsv.Marshal(repo)
+	ret, err := ltsv.Marshal(repo)
+	fmt.Println(ret)
+	fmt.Println(err)
 }
