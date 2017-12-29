@@ -12,6 +12,7 @@ const (
 	ltsvTag = "ltsv"
 )
 
+// Marshal interface convert to LTSV format string.
 func Marshal(v interface{}) string {
 	handler := marshaler{}
 	rv := reflect.ValueOf(v)
@@ -29,6 +30,7 @@ func Marshal(v interface{}) string {
 	return handler.pairs.join()
 }
 
+// Unmarshal todo...
 func Unmarshal(log string, v interface{}) error {
 	// TODO:
 	return nil
