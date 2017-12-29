@@ -1,0 +1,13 @@
+sudo: false
+language: go
+go:
+  - 1.9.x
+  - master
+
+script:
+  - make
+
+matrix:
+  allow_failures:
+    - go: master
+  fast_finish: true
