@@ -6,14 +6,16 @@ import (
 )
 
 type Repository struct {
-	ID          int                    `ltsv:"id"`
-	Name        string                 `ltsv:"name"`
-	Description string                 `ltsv:"description"`
-	URL         string                 `ltsv:"url"`
-	Private     bool                   `ltsv:"private"`
-	Topics      []string               `ltsv:"topics"`
-	License     map[string]interface{} `ltsv:"license"`
-	Owner       Owner                  `ltsv:owner`
+	ID          int               `ltsv:"id"`
+	Name        string            `ltsv:"name"`
+	Description string            `ltsv:"description"`
+	URL         string            `ltsv:"url"`
+	Private     bool              `ltsv:"private"`
+	Topics      []string          `ltsv:"topics"`
+	License     map[string]string `ltsv:"license"`
+	If          interface{}       `ltsv:"interface"`
+	Owner       Owner             `ltsv:"owner"`
+	Empty       Empty             `ltsv:"empty"`
 }
 
 type Owner struct {
@@ -22,6 +24,8 @@ type Owner struct {
 	AvatarURL string
 }
 
+type Empty struct{}
+
 func main() {
 	repo := Repository{
 		ID:          123,
@@ -29,9 +33,9 @@ func main() {
 		Description: "ltsv Marshal and Unmarshal",
 		URL:         "http://google.com",
 		Topics:      []string{"go", "ltsv", "reflect"},
+		License:     map[string]string{},
 	}
 
-	ret, err := ltsv.Marshal(repo)
+	ret := ltsv.Marshal(repo)
 	fmt.Println(ret)
-	fmt.Println(err)
 }

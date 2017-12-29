@@ -2,50 +2,31 @@ package ltsv
 
 import (
 	"encoding/json"
-	//"fmt"
+	// "fmt"
 	"reflect"
 	"strconv"
 	"strings"
 )
 
-func Marshal(v interface{}) (string, error) {
+const (
+	ltsvTag = "ltsv"
+)
+
+func Marshal(v interface{}) string {
+	handler := marshaler{}
 	rv := reflect.ValueOf(v)
 	rt := rv.Type()
 
-	var pairs []string
 	for i := 0; i < rt.NumField(); i++ {
 		field := rt.Field(i)
-		key := field.Tag.Get("ltsv")
+		key := field.Tag.Get(ltsvTag)
 		value := rv.Field(i)
-		converted := ""
+		converted := handler.convertValue(field.Type, value)
 
-		if value.IsValid() {
-			switch field.Type.Kind() {
-			case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-				converted = strconv.FormatInt(value.Int(), 10)
-			case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-				converted = strconv.FormatUint(value.Uint(), 10)
-			case reflect.Float32, reflect.Float64:
-				converted = strconv.FormatFloat(value.Float(), 'f', -1, 64)
-			case reflect.Bool:
-				converted = strconv.FormatBool(value.Bool())
-			case reflect.String:
-				converted = value.String()
-			default:
-				// NOTE:
-				// not support type is json serialize.
-				bytes, err := json.Marshal(value.Interface())
-				if err == nil {
-					converted = string(bytes)
-				}
-			}
-		}
-
-		pair := key + ":" + converted
-		pairs = append(pairs, pair)
+		handler.pairs.append(key, converted)
 	}
 
-	return strings.Join(pairs, "\t"), nil
+	return handler.pairs.join()
 }
 
 func Unmarshal(log string, v interface{}) error {
@@ -53,6 +34,91 @@ func Unmarshal(log string, v interface{}) error {
 	return nil
 }
 
-type marshaler struct{}
+type marshaler struct {
+	pairs pairArray
+}
 
-type unmarshaler struct{}
+func (m *marshaler) convertValue(t reflect.Type, v reflect.Value) string {
+	converted := ""
+	if isEmptyValue(v) {
+		return converted
+	}
+
+	if v.IsValid() {
+		switch t.Kind() {
+		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+			converted = strconv.FormatInt(v.Int(), 10)
+		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+			converted = strconv.FormatUint(v.Uint(), 10)
+		case reflect.Float32, reflect.Float64:
+			converted = strconv.FormatFloat(v.Float(), 'f', -1, 64)
+		case reflect.Bool:
+			converted = strconv.FormatBool(v.Bool())
+		case reflect.String:
+			converted = v.String()
+		default:
+			// NOTE:
+			// not support type is json serialize.
+			bytes, err := json.Marshal(v.Interface())
+			if err == nil {
+				converted = string(bytes)
+			}
+		}
+	}
+	return converted
+}
+
+type unmarshaler struct {
+	// TODO: implement
+}
+
+type pairArray struct {
+	pairs []pair
+}
+
+func (pa *pairArray) len() int {
+	return len(pa.pairs)
+}
+
+func (pa *pairArray) append(key string, value string) {
+	p := pair{
+		Key:   key,
+		Value: value,
+	}
+	pa.pairs = append(pa.pairs, p)
+}
+
+func (pa *pairArray) join() string {
+	var ret []string
+	for _, p := range pa.pairs {
+		ret = append(ret, p.join())
+	}
+	return strings.Join(ret, "\t")
+}
+
+type pair struct {
+	Key   string
+	Value string
+}
+
+func (p *pair) join() string {
+	return p.Key + ":" + p.Value
+}
+
+func isEmptyValue(v reflect.Value) bool {
+	switch v.Kind() {
+	case reflect.Array, reflect.Map, reflect.Slice, reflect.String:
+		return v.Len() == 0
+	case reflect.Bool:
+		return !v.Bool()
+	//case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+	//return v.Int() == 0
+	//case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
+	//return v.Uint() == 0
+	//case reflect.Float32, reflect.Float64:
+	//return v.Float() == 0
+	case reflect.Interface, reflect.Ptr:
+		return v.IsNil()
+	}
+	return false
+}
