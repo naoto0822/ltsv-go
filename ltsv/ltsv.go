@@ -82,8 +82,8 @@ func (pa *pairArray) len() int {
 
 func (pa *pairArray) append(key string, value string) {
 	p := pair{
-		Key:   key,
-		Value: value,
+		key:   key,
+		value: value,
 	}
 	pa.pairs = append(pa.pairs, p)
 }
@@ -97,12 +97,12 @@ func (pa *pairArray) join() string {
 }
 
 type pair struct {
-	Key   string
-	Value string
+	key   string
+	value string
 }
 
 func (p *pair) join() string {
-	return p.Key + ":" + p.Value
+	return p.key + ":" + p.value
 }
 
 func isEmptyValue(v reflect.Value) bool {
