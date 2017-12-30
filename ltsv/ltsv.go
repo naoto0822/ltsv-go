@@ -32,7 +32,22 @@ func Marshal(v interface{}) string {
 
 // Unmarshal todo...
 func Unmarshal(log string, v interface{}) error {
-	// TODO:
+	handler := unmarshaler{}
+	err := handler.pairs.parse(log)
+	if err != nil {
+		return err
+	}
+
+	rv := reflect.ValueOf(v).Elem()
+	rt := rv.Type()
+
+	for i := 0; i < rt.NumField(); i++ {
+		field := rt.Field(i)
+		key := field.Tag.Get(ltsvTag)
+
+		// TODO: tochu
+	}
+
 	return nil
 }
 
@@ -71,7 +86,7 @@ func (m *marshaler) convertValue(t reflect.Type, v reflect.Value) string {
 }
 
 type unmarshaler struct {
-	// TODO: implement
+	pairs pairArray
 }
 
 type pairArray struct {
@@ -88,6 +103,34 @@ func (pa *pairArray) append(key string, value string) {
 		value: value,
 	}
 	pa.pairs = append(pa.pairs, p)
+}
+
+func (pa *pairArray) parse(ltsv string) error {
+	if len(ltsv) < 1 {
+		return errors.New("ltsv log is empty")
+	}
+
+	keyvalues := strings.Split(ltsv, "\t")
+	if len(keyvalues) < 1 {
+		return errors.New("ltsv log is empty")
+	}
+
+	for _, kv := range keyvalues {
+		kandv := strings.Split(kv, ":")
+		if len(kandv) < 2 {
+			// TODO: log
+			continue
+		}
+		k, v := kandv[0], kandv[1]
+		pa.append(k, v)
+	}
+
+	return nil
+}
+
+func (pa *pairArray) Get(key string) string {
+	// TODO: tochu
+	return ""
 }
 
 func (pa *pairArray) join() string {
