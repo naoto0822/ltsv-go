@@ -7,10 +7,10 @@ dep:
 vet:
 	go tool vet ./ltsv
 
-test:
-	go test -v ./ltsv
-
 lint:
 	golint -set_exit_status ./ltsv
+
+test:
+	go test -v ./ltsv
 
 .PHONY: dep vet test lint
