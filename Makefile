@@ -5,7 +5,7 @@ dep:
 	go get -u github.com/golang/lint/golint
 
 vet:
-	go tool vet ./ltsv
+	go vet ./ltsv
 
 lint:
 	golint -set_exit_status ./ltsv
