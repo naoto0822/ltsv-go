@@ -2,7 +2,8 @@ package ltsv
 
 import (
 	"encoding/json"
-	// "fmt"
+	"errors"
+	"fmt"
 	"reflect"
 	"strconv"
 	"strings"
@@ -10,6 +11,9 @@ import (
 
 const (
 	ltsvTag = "ltsv"
+
+	tabKey   = "\t"
+	colonKey = ":"
 )
 
 // Marshal interface convert to LTSV format string.
@@ -22,7 +26,7 @@ func Marshal(v interface{}) string {
 		field := rt.Field(i)
 		key := field.Tag.Get(ltsvTag)
 		value := rv.Field(i)
-		converted := handler.convertValue(field.Type, value)
+		converted := handler.convertString(field.Type, value)
 
 		handler.pairs.append(key, converted)
 	}
@@ -38,24 +42,35 @@ func Unmarshal(log string, v interface{}) error {
 		return err
 	}
 
-	rv := reflect.ValueOf(v).Elem()
+	rv := reflect.ValueOf(v)
+	if rv.Kind() != reflect.Ptr || rv.IsNil() {
+		return errors.New("target interface is not pointer or nil")
+	}
+
+	rv = reflect.ValueOf(v).Elem()
 	rt := rv.Type()
 
 	for i := 0; i < rt.NumField(); i++ {
 		field := rt.Field(i)
 		key := field.Tag.Get(ltsvTag)
+		value := handler.pairs.get(key)
+		if value == "" {
+			continue
+		}
 
-		// TODO: tochu
+		handler.setAndConvertValue(field.Type, &rv, i, value)
 	}
 
 	return nil
 }
 
+// marshaler handle `Marhsal`.
 type marshaler struct {
 	pairs pairArray
 }
 
-func (m *marshaler) convertValue(t reflect.Type, v reflect.Value) string {
+// convertValue target struct value convert to `string`.
+func (m *marshaler) convertString(t reflect.Type, v reflect.Value) string {
 	converted := ""
 	if isEmptyValue(v) {
 		return converted
@@ -74,7 +89,6 @@ func (m *marshaler) convertValue(t reflect.Type, v reflect.Value) string {
 		case reflect.String:
 			converted = v.String()
 		default:
-			// NOTE:
 			// not support type is json serialize.
 			bytes, err := json.Marshal(v.Interface())
 			if err == nil {
@@ -85,18 +99,125 @@ func (m *marshaler) convertValue(t reflect.Type, v reflect.Value) string {
 	return converted
 }
 
+// unmarshaler handle `Unmarshal`.
 type unmarshaler struct {
 	pairs pairArray
 }
 
+// setAndConvertValue target value convert to each type and set target struct.
+func (u *unmarshaler) setAndConvertValue(t reflect.Type, v *reflect.Value, i int, value string) {
+	if !v.IsValid() || !v.Field(i).CanSet() {
+		return
+	}
+
+	switch t.Kind() {
+	case reflect.Int:
+		converted, err := strconv.ParseInt(value, 0, 0)
+		if err != nil {
+			return
+		}
+		v.Field(i).SetInt(converted)
+	case reflect.Int8:
+		converted, err := strconv.ParseInt(value, 0, 8)
+		if err != nil {
+			return
+		}
+		v.Field(i).SetInt(converted)
+	case reflect.Int16:
+		converted, err := strconv.ParseInt(value, 0, 16)
+		if err != nil {
+			return
+		}
+		v.Field(i).SetInt(converted)
+	case reflect.Int32:
+		converted, err := strconv.ParseInt(value, 0, 32)
+		if err != nil {
+			return
+		}
+		v.Field(i).SetInt(converted)
+	case reflect.Int64:
+		converted, err := strconv.ParseInt(value, 0, 64)
+		if err != nil {
+			return
+		}
+		v.Field(i).SetInt(converted)
+	case reflect.Uint:
+		converted, err := strconv.ParseUint(value, 0, 0)
+		if err != nil {
+			return
+		}
+		v.Field(i).SetUint(converted)
+	case reflect.Uint8:
+		converted, err := strconv.ParseUint(value, 0, 8)
+		if err != nil {
+			return
+		}
+		v.Field(i).SetUint(converted)
+	case reflect.Uint16:
+		converted, err := strconv.ParseUint(value, 0, 16)
+		if err != nil {
+			return
+		}
+		v.Field(i).SetUint(converted)
+	case reflect.Uint32:
+		converted, err := strconv.ParseUint(value, 0, 32)
+		if err != nil {
+			return
+		}
+		v.Field(i).SetUint(converted)
+	case reflect.Uint64:
+		converted, err := strconv.ParseUint(value, 0, 64)
+		if err != nil {
+			return
+		}
+		v.Field(i).SetUint(converted)
+	case reflect.Float32:
+		converted, err := strconv.ParseFloat(value, 32)
+		if err != nil {
+			return
+		}
+		v.Field(i).SetFloat(converted)
+	case reflect.Float64:
+		converted, err := strconv.ParseFloat(value, 64)
+		if err != nil {
+			return
+		}
+		v.Field(i).SetFloat(converted)
+	case reflect.Bool:
+		converted, err := strconv.ParseBool(value)
+		if err != nil {
+			return
+		}
+		v.Field(i).SetBool(converted)
+	case reflect.String:
+		v.Field(i).SetString(value)
+	case reflect.Struct, reflect.Slice, reflect.Array, reflect.Map, reflect.Interface:
+		s := reflect.New(t)
+
+		bytes := []byte(value)
+		err := json.Unmarshal(bytes, s.Interface())
+		if err != nil {
+			fmt.Println("error: ", err)
+			return
+		}
+
+		v.Field(i).Set(s.Elem())
+	default:
+		return
+	}
+}
+
+// pairArray control `pair` slice.
 type pairArray struct {
 	pairs []pair
 }
 
+// len return `pairs` length.
 func (pa *pairArray) len() int {
 	return len(pa.pairs)
 }
 
+// append add `pair` struct to `pair` field from key and value.
 func (pa *pairArray) append(key string, value string) {
 	p := pair{
 		key:   key,
@@ -105,6 +226,7 @@ func (pa *pairArray) append(key string, value string) {
 	pa.pairs = append(pa.pairs, p)
 }
 
+// parse this method parse LTSV format to `pairArray` struct.
 func (pa *pairArray) parse(ltsv string) error {
 	if len(ltsv) < 1 {
 		return errors.New("ltsv log is empty")
@@ -116,7 +238,7 @@ func (pa *pairArray) parse(ltsv string) error {
 	}
 
 	for _, kv := range keyvalues {
-		kandv := strings.Split(kv, ":")
+		kandv := strings.SplitN(kv, colonKey, 2)
 		if len(kandv) < 2 {
 			// TODO: log
 			continue
@@ -128,27 +250,39 @@ func (pa *pairArray) parse(ltsv string) error {
 	return nil
 }
 
-func (pa *pairArray) Get(key string) string {
-	// TODO: tochu
+// get return value from `pair`.key match.
+func (pa *pairArray) get(key string) string {
+	for _, p := range pa.pairs {
+		if p.key == key {
+			return p.value
+		}
+	}
 	return ""
 }
 
+// join keyvalue slice joined by tab.
+// output "key:value\tkeyvalue\t..."
 func (pa *pairArray) join() string {
 	var ret []string
 	for _, p := range pa.pairs {
 		ret = append(ret, p.join())
 	}
-	return strings.Join(ret, "\t")
+	return strings.Join(ret, tabKey)
 }
 
+// pair this struct have key and value.
 type pair struct {
 	key   string
 	value string
 }
 
+// join key and value joined by colon
+// output "key:value"
 func (p *pair) join() string {
-	return p.key + ":" + p.value
+	return p.key + colonKey + p.value
 }
+
+// util
 
 func isEmptyValue(v reflect.Value) bool {
 	switch v.Kind() {
