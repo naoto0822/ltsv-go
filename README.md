@@ -55,7 +55,9 @@ if err == nil {
 
 ## TODO
 
-- [] Unmarshal test
+- [ ] Unmarshal test
+- [ ] handle not support type
+- [ ] implement logger
 
 ## License
 
